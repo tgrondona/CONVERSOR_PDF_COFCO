@@ -2,43 +2,50 @@ import streamlit as st
 import tempfile
 from pathlib import Path
 
-from pdf_a_excel import pdf_a_excel
+from pdf_a_excel_v1 import pdf_a_excel as simple
+from pdf_a_excel_v2 import pdf_a_excel as completo
 
 st.set_page_config(page_title="PDF a Excel", layout="centered")
 
 st.title("📄 → 📊 PDF a Excel")
-st.write("Subí un estado de cuenta en PDF y descargá el Excel generado.")
 
-uploaded_file = st.file_uploader("Seleccionar PDF", type=["pdf"])
+tipo = st.selectbox(
+    "Elegir formato",
+    [
+        "Simple (tabla plana)",
+        "Completo (con secciones y resumen)"
+    ]
+)
 
-if uploaded_file is not None:
-    if st.button("Convertir"):
+uploaded_file = st.file_uploader("Subir PDF", type=["pdf"])
 
-        with st.spinner("Procesando PDF..."):
-            try:
-                # Guardar PDF temporal
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
-                    tmp_pdf.write(uploaded_file.read())
-                    pdf_path = tmp_pdf.name
+if uploaded_file is not None and st.button("Convertir"):
 
-                # Archivo de salida
-                output_path = pdf_path.replace(".pdf", ".xlsx")
+    with st.spinner("Procesando..."):
+        try:
+            # guardar pdf temporal
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(uploaded_file.read())
+                pdf_path = tmp.name
 
-                # Ejecutar tu función
-                result = pdf_a_excel(pdf_path, output_path)
+            output_path = pdf_path.replace(".pdf", ".xlsx")
 
-                # Leer Excel para descarga
-                with open(result, "rb") as f:
-                    excel_bytes = f.read()
+            # elegir función
+            if tipo == "Simple (tabla plana)":
+                result = simple(pdf_path, output_path)
+            else:
+                result = completo(pdf_path, output_path)
 
-                st.success("✅ Archivo generado")
+            with open(result, "rb") as f:
+                data = f.read()
 
-                st.download_button(
-                    label="📥 Descargar Excel",
-                    data=excel_bytes,
-                    file_name=Path(result).name,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            st.success("✅ Excel generado")
 
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
+            st.download_button(
+                "Descargar Excel",
+                data=data,
+                file_name=Path(result).name
+            )
+
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
